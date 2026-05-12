@@ -9,4 +9,9 @@ SPECIALISTS = [
     "physiotherapist",
     "nephrologist",
     "endocrinologist",
+    "gastroenterologist",
+    "diabetologist",
+    "Gediatrics",
+    "IVF Center",
+    "Weight Loss Center",
 ]

@@ -12,6 +12,11 @@ What we extract per listing:
   ✅ latitude / longitude  (from the detail-panel URL)
   ✅ specialty  (the search term used)
   ✅ city / area
+
+Radius limiting:
+  When an area has known coordinates in config/areas_coords.py,
+  we open Maps at that lat/lng with zoom=12 (~10-14 km radius)
+  before searching, so results stay local for MR coverage.
 """
 
 import asyncio
@@ -25,6 +30,15 @@ from .utils import (
     timestamp,
     scrape_phone_from_website,
 )
+
+# ── Area coordinates for radius-limited search ────────────────
+try:
+    import sys, os
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+    from config.areas_coords import AREA_COORDS, DEFAULT_ZOOM
+except ImportError:
+    AREA_COORDS  = {}
+    DEFAULT_ZOOM = 12
 
 
 class GoogleMapsScraper(BaseScraper):
@@ -45,10 +59,12 @@ class GoogleMapsScraper(BaseScraper):
         slow_mo: int = 80,
         scroll_rounds: int = 6,
         max_listings: int = 20,
+        zoom: int | None = None,
     ):
         super().__init__(headless=headless, slow_mo=slow_mo)
         self.scroll_rounds = scroll_rounds
-        self.max_listings = max_listings
+        self.max_listings  = max_listings
+        self.zoom          = zoom  # override DEFAULT_ZOOM if passed
 
     # ─────────────────────────────────────────────────────────────────
     # Public entry point
@@ -66,13 +82,13 @@ class GoogleMapsScraper(BaseScraper):
         Returns a list of lead dicts and saves JSON + CSV.
         """
         query = f"{specialty} in {city} {area}".strip()
-        print(f"\n🔍 Query: {query}")
+        print(f"\n[SEARCH] Query: {query}")
 
-        await self._navigate_to_maps(query)
+        await self._navigate_to_maps(query, area)
         await self._scroll_results()
 
         listings = await self.page.query_selector_all(self.LISTING_SELECTOR)
-        print(f"📋 Found {len(listings)} listing elements (capping at {self.max_listings})")
+        print(f"[INFO] Found {len(listings)} listing elements (capping at {self.max_listings})")
         listings = listings[: self.max_listings]
 
         leads = []
@@ -81,28 +97,48 @@ class GoogleMapsScraper(BaseScraper):
             lead = await self._extract_listing(listing, specialty, city, area)
             if lead:
                 leads.append(lead)
-                print(f"✅ {lead['name']}")
+                print(f"OK {lead['name']}")
             else:
-                print("⚠️  skipped")
+                print("skipped")
 
         # ── save ──────────────────────────────────────────────────────
         slug = f"{specialty}_{city}_{area}".replace(" ", "_")
         save_json(leads, f"{output_dir}/{slug}.json")
         save_csv(leads,  f"{output_dir}/{slug}.csv")
 
-        print(f"\n✅ Done — {len(leads)} leads scraped for '{query}'")
+        print(f"\n[DONE] {len(leads)} leads scraped for '{query}'")
         return leads
 
     # ─────────────────────────────────────────────────────────────────
     # Internal helpers
     # ─────────────────────────────────────────────────────────────────
 
-    async def _navigate_to_maps(self, query: str):
-        print("🌐 Opening Google Maps...")
-        await self.page.goto("https://www.google.com/maps")
+    async def _navigate_to_maps(self, query: str, area: str = ""):
+        """
+        Navigate to Google Maps and search.
+
+        If the area has known coordinates, we open Maps centered on that
+        lat/lng at the configured zoom level BEFORE searching — this
+        constrains the visible area to ~10-14 km so Google returns only
+        nearby results, not city-wide ones.
+        """
+        zoom    = self.zoom or DEFAULT_ZOOM
+        coords  = AREA_COORDS.get(area) if area else None
+
+        if coords:
+            lat, lng = coords
+            # Open Maps pre-centered on the area at the right zoom level
+            maps_url = f"https://www.google.com/maps/@{lat},{lng},{zoom}z"
+            print(f"[GPS] Area '{area}' coords ({lat}, {lng}), zoom={zoom} (~{_zoom_radius(zoom)} km radius)")
+            print(f"[NAV] Opening: {maps_url}")
+            await self.page.goto(maps_url)
+        else:
+            print(f"[NAV] No coords for '{area}' — opening Maps normally")
+            await self.page.goto("https://www.google.com/maps")
+
         await self.page.wait_for_timeout(3000)
 
-        print("⌨️  Typing search query...")
+        print("[KEY] Typing search query...")
         await self.page.keyboard.type(query, delay=80)
         await self.page.keyboard.press("Enter")
 
@@ -114,10 +150,9 @@ class GoogleMapsScraper(BaseScraper):
 
     async def _scroll_results(self):
         """Scroll the results panel to load more listings."""
-        print(f"🖱️  Scrolling results ({self.scroll_rounds} rounds)...")
+        print(f"[SCROLL] Scrolling results ({self.scroll_rounds} rounds)...")
         feed = await self.page.query_selector('//div[@role="feed"]')
         if not feed:
-            # Fallback: scroll the whole page
             for _ in range(self.scroll_rounds):
                 await self.page.mouse.wheel(0, 5000)
                 await self.page.wait_for_timeout(2000)
@@ -151,7 +186,7 @@ class GoogleMapsScraper(BaseScraper):
 
             # ── click into the detail panel ───────────────────────────
             await listing.click()
-            await self.page.wait_for_timeout(3000)   # panel animation
+            await self.page.wait_for_timeout(3000)
 
             # ── phone ─────────────────────────────────────────────────
             phone = await self._get_phone()
@@ -165,17 +200,30 @@ class GoogleMapsScraper(BaseScraper):
             # ── phone fallback: scrape from website if Maps had none ───
             phone_source = "google_maps"
             if phone == "N/A" and website != "N/A":
-                print(f"    🌐 No phone on Maps — trying website...")
+                print(f"    [WEB] No phone on Maps — trying website...")
                 phone = await scrape_phone_from_website(self.page, website)
                 if phone != "N/A":
                     phone_source = "website"
                 else:
-                    print(f"    ❌ No phone found on website either")
+                    print(f"    [MISS] No phone found on website either")
                     phone_source = "not_found"
 
             # ── coordinates from current URL ──────────────────────────
             current_url = self.page.url
             lat, lng = extract_coords(current_url)
+
+            # ── distance from area center ─────────────────────────────
+            area_center = AREA_COORDS.get(area) if area else None
+            distance_km = "N/A"
+
+            if area_center and lat != "N/A" and lng != "N/A":
+                dist = _haversine(area_center[0], area_center[1], float(lat), float(lng))
+                max_km = _zoom_radius(self.zoom or DEFAULT_ZOOM)
+                if dist > max_km:
+                    print(f"    [SKIP] {name} is {dist:.1f} km away (limit {max_km} km)")
+                    return None
+                distance_km = round(dist, 2)
+                print(f"    [DIST] {distance_km} km", end=" ")
 
             return {
                 "name":         name,
@@ -190,22 +238,19 @@ class GoogleMapsScraper(BaseScraper):
                 "website":      website,
                 "latitude":     lat,
                 "longitude":    lng,
+                "distance_km":  distance_km,
                 "maps_url":     current_url,
             }
 
         except Exception as e:
-            print(f"\n    ❌ Error: {e}")
+            print(f"\n    [ERR] Error: {e}")
             return None
 
     async def _get_phone(self) -> str:
-        """Extract phone from detail panel."""
         try:
-            btn = await self.page.wait_for_selector(
-                self.PHONE_SEL, timeout=3000
-            )
+            btn = await self.page.wait_for_selector(self.PHONE_SEL, timeout=3000)
             if btn:
                 aria = await btn.get_attribute("aria-label") or ""
-                # aria-label looks like "Phone: +91 98765 43210"
                 phone = aria.replace("Phone:", "").replace("phone:", "").strip()
                 return phone if phone else "N/A"
         except Exception:
@@ -213,14 +258,10 @@ class GoogleMapsScraper(BaseScraper):
         return "N/A"
 
     async def _get_address(self) -> str:
-        """Extract address from detail panel."""
         try:
-            btn = await self.page.wait_for_selector(
-                self.ADDRESS_SEL, timeout=3000
-            )
+            btn = await self.page.wait_for_selector(self.ADDRESS_SEL, timeout=3000)
             if btn:
                 aria = await btn.get_attribute("aria-label") or ""
-                # aria-label: "Address: 123 Main St, Pune"
                 address = re.sub(r"^[Aa]ddress:\s*", "", aria).strip()
                 return address if address else "N/A"
         except Exception:
@@ -228,17 +269,39 @@ class GoogleMapsScraper(BaseScraper):
         return "N/A"
 
     async def _get_website(self) -> str:
-        """Extract website URL from detail panel."""
         try:
-            link = await self.page.wait_for_selector(
-                self.WEBSITE_SEL, timeout=3000
-            )
+            link = await self.page.wait_for_selector(self.WEBSITE_SEL, timeout=3000)
             if link:
                 href = await link.get_attribute("href") or "N/A"
                 return href
         except Exception:
             pass
         return "N/A"
+
+
+# ─────────────────────────────────────────────────────────────────
+# Geometry helpers
+# ─────────────────────────────────────────────────────────────────
+
+import math
+
+def _haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Straight-line distance in km between two lat/lng points."""
+    R = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+    return R * 2 * math.asin(math.sqrt(a))
+
+def _zoom_radius(zoom: int) -> float:
+    """Approximate visible radius in km for a given Google Maps zoom level."""
+    return {
+        14: 3.0,
+        13: 6.0,
+        12: 12.0,
+        11: 22.0,
+        10: 40.0,
+    }.get(zoom, 12.0)
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -252,12 +315,14 @@ async def scrape_google_maps(
     max_listings: int = 20,
     output_dir: str = "outputs",
     user_data_dir: str = "C:/playwright-profile",
+    zoom: int | None = None,
 ) -> list[dict]:
     scraper = GoogleMapsScraper(
         headless=False,
         slow_mo=80,
         scroll_rounds=6,
         max_listings=max_listings,
+        zoom=zoom,
     )
     await scraper.start(user_data_dir=user_data_dir)
     try:

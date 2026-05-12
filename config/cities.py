@@ -4,4 +4,5 @@ CITIES = [
     "Bangalore",
     "Hyderabad",
     "Delhi",
+    "Chikhali",
 ]
