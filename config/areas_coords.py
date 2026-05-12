@@ -14,6 +14,15 @@
 DEFAULT_ZOOM = 12   # ~10-14 km radius — change to 13 for tighter
 
 AREA_COORDS: dict[str, tuple[float, float]] = {
+    # ── City-level fallback coords ─────────────────────────────
+    # Used when area="" (city-wide search). Must match the city
+    # name passed to scrape_google_maps(city=...) exactly.
+    "Pune":           (18.5204, 73.8567),
+    "Mumbai":         (19.0760, 72.8777),
+    "Bangalore":      (12.9716, 77.5946),
+    "Hyderabad":      (17.3850, 78.4867),
+    "Delhi":          (28.6139, 77.2090),
+
     # ── Pune ──────────────────────────────────────────────────
     "Baner":          (18.5590, 73.7868),
     "Wakad":          (18.5975, 73.7617),

@@ -743,8 +743,7 @@ select option { background: var(--raised); color: var(--text); }
   color: var(--muted2);
   font-weight: 400;
 }
-.distance-badge {
-  display: inline-block;
+.distance-badge {  display: inline-block;
   background: var(--accent2-bg);
   border: 1px solid rgba(123,74,30,.2);
   color: var(--accent2);
@@ -1241,12 +1240,17 @@ async function previewFile(encodedPath, filename) {
 }
 
 function renderRecord(r) {
-  const skip = ['maps_url', 'distance_km'];
+  // maps_url is too long to display usefully — hide it from the grid.
+  // distance_km is shown as a badge in the header AND in the grid.
+  const skip = ['maps_url'];
   const fields = Object.entries(r).filter(([k]) => !skip.includes(k));
+
   const dist = r.distance_km;
-  const distBadge = (dist && dist !== 'N/A')
+  const hasDistance = dist !== undefined && dist !== null && dist !== 'N/A' && dist !== '';
+  const distBadge = hasDistance
     ? `<span class="distance-badge">&#x1F4CD; ${dist} km away</span>`
-    : '';
+    : `<span class="distance-badge" style="opacity:.45;background:none;border-color:var(--border)">&#x1F4CD; no distance</span>`;
+
   return `
     <div class="record-card">
       <div class="record-name">${escHtml(r.name || 'Unknown')}${distBadge}</div>
@@ -1256,7 +1260,8 @@ function renderRecord(r) {
           if (k === 'phone' && v !== 'N/A') cls += ' phone';
           else if (k === 'website' && v !== 'N/A') cls += ' website';
           else if (k === 'stars' && v !== 'N/A') cls += ' stars';
-          else if (v === 'N/A') cls += ' na';
+          else if (k === 'distance_km' && v !== 'N/A') cls += ' distance';
+          else if (v === 'N/A' || v === '' || v === null) cls += ' na';
           const display = (k === 'website' && v !== 'N/A')
             ? `<a href="${escHtml(String(v))}" target="_blank" class="${cls}">${escHtml(String(v))}</a>`
             : `<span class="${cls}">${escHtml(String(v))}</span>`;
