@@ -339,6 +339,31 @@
     .folder-files { display: none; padding: 10px; background: #f5f8ff; }
     .run-folder.open .folder-files { display: block; }
 
+    /* ── MERGED FILES SECTION ── */
+    .merged-section {
+      display: none; padding: 0 10px 10px;
+      background: #f5f8ff;
+    }
+    .run-folder.open .merged-section { display: block; }
+
+    .merged-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 14px 6px;
+      font-size: 10px; font-weight: 800; text-transform: uppercase;
+      letter-spacing: .6px; color: var(--orange);
+    }
+
+    .merged-header::before {
+      content: '⚡'; font-size: 12px;
+    }
+
+    .file-row.merged {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      margin-bottom: 4px;
+    }
+    .file-row.merged:hover { background: #ffedd5; }
+
     .file-row {
       display: flex; align-items: center; padding: 9px 14px;
       border-radius: 12px; gap: 12px; transition: background .12s;
@@ -519,6 +544,144 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* ── MOBILE BOTTOM NAV ── */
+    .mobile-nav {
+      display: none;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+
+      /* Hide desktop sidebar + topbar tabs */
+      .sidebar { display: none; }
+      .topbar-tabs { display: none; }
+      .topbar-sub { display: none; }
+
+      /* App layout: full width column */
+      .app { display: block; height: auto; overflow: visible; }
+      .main { display: flex; flex-direction: column; overflow: visible; }
+
+      /* Topbar slimmer */
+      .topbar { padding: 0 16px; height: 48px; }
+      .topbar-title { font-size: 13px; }
+
+      /* Scrollable content, pad bottom for mobile nav */
+      .content {
+        flex: 1;
+        overflow-y: visible;
+        padding: 16px 14px 100px;
+      }
+
+      /* Hero */
+      .hero { padding: 22px 18px; border-radius: 20px; margin-bottom: 16px; }
+      .hero h1 { font-size: 22px; margin-bottom: 6px; }
+      .hero p { font-size: 13px; }
+
+      /* Stats: 2-column on mobile */
+      .stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+      .stat-card { padding: 16px 14px; border-radius: 16px; }
+      .stat-card h2 { font-size: 20px; }
+      .stat-card p { font-size: 11px; }
+
+      /* Config row: stack vertically */
+      .config-row {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        padding: 16px;
+        border-radius: 16px;
+      }
+      /* Max Listings and Pause go side by side, specialty+city+area each full */
+      #specialty-section,
+      .config-row .field-group:nth-child(2),
+      #area-section { grid-column: 1 / -1; }
+
+      /* Source picker: wrap */
+      .source-picker { flex-wrap: wrap; gap: 8px; padding: 14px 16px; border-radius: 18px; }
+      .source-btn { flex: 1; min-width: 100px; justify-content: center; }
+
+      /* Mode grid: 2x2 */
+      .mode-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 14px; border-radius: 18px; }
+
+      /* Section spacing */
+      .section { margin-bottom: 22px; }
+      .section-header h2 { font-size: 18px; }
+
+      /* Folder/file cards */
+      .run-folder { border-radius: 16px; }
+      .folder-header { padding: 14px 16px; }
+      .folder-name { font-size: 13px; }
+      .file-row { flex-wrap: wrap; gap: 6px; padding: 10px 12px; }
+      .file-name { flex: 1 1 60%; font-size: 11px; }
+      .file-records { min-width: auto; font-size: 11px; }
+      .file-size { min-width: auto; }
+      .file-actions { flex-wrap: nowrap; }
+
+      /* Record modal */
+      .modal { width: 96%; border-radius: 20px; }
+      .record-grid { grid-template-columns: 1fr; }
+
+      /* Job cards */
+      .job-card { border-radius: 16px; padding: 14px 16px; }
+
+      /* Run button */
+      .run-btn { font-size: 14px; padding: 14px; }
+
+      /* Cmd preview smaller */
+      .cmd-preview { font-size: 10px; }
+
+      /* ── Mobile bottom nav visible ── */
+      .mobile-nav {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: white;
+        border-top: 1px solid #e8edf5;
+        justify-content: space-around;
+        align-items: stretch;
+        padding: 8px 4px 12px;
+        z-index: 999;
+        box-shadow: 0 -4px 20px rgba(15,23,42,0.08);
+      }
+
+      .mobile-nav a {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        text-decoration: none;
+        color: #94a3b8;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 6px 10px;
+        border-radius: 12px;
+        transition: .18s;
+        flex: 1;
+      }
+
+      .mobile-nav a .mn-icon { font-size: 18px; line-height: 1; }
+
+      .mobile-nav a.active {
+        color: var(--navy);
+        background: var(--blue-soft);
+      }
+    }
+
+    @media (max-width: 480px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .config-row { grid-template-columns: 1fr; }
+      #specialty-section,
+      .config-row .field-group:nth-child(2),
+      #area-section { grid-column: auto; }
+      .source-btn { min-width: 80px; font-size: 12px; padding: 8px 12px; }
+      .topbar-title { font-size: 12px; }
+    }
   </style>
 </head>
 
@@ -531,7 +694,8 @@
     <div class="nav-links">
       <!-- FIX 5: sidebar calls switchTab(name, this) — unified signature -->
       <a onclick="switchTab('scrape',this)" class="active">⚡ Scrape</a>
-      <a onclick="switchTab('files',this)">📁 Files</a>
+      <a onclick="switchTab('files',this)">📁 Raw Files</a>
+      <a onclick="switchTab('merged',this)">⚡ Merged</a>
       <a onclick="switchTab('jobs',this)">🕐 Jobs</a>
     </div>
     <div class="sidebar-stats">
@@ -556,7 +720,8 @@
       <div class="topbar-tabs">
         <!-- FIX 5: topbar also calls switchTab(name, this) — same unified signature -->
         <button class="tab-btn active" onclick="switchTab('scrape',this)">⚡ Scrape</button>
-        <button class="tab-btn" onclick="switchTab('files',this)">📁 Files</button>
+        <button class="tab-btn" onclick="switchTab('files',this)">📁 Raw Files</button>
+        <button class="tab-btn" onclick="switchTab('merged',this)">⚡ Merged</button>
         <button class="tab-btn" onclick="switchTab('jobs',this)">🕐 Jobs</button>
       </div>
     </div>
@@ -679,8 +844,8 @@
       <!-- ══════════════════ FILES PANEL ══════════════════ -->
       <div class="panel" id="panel-files">
         <div class="hero" style="margin-bottom:24px">
-          <h1>Output Files</h1>
-          <p>Browse all scraped data organised by run folder. Preview or download any JSON or CSV file.</p>
+          <h1>Raw Output Files</h1>
+          <p>Browse all raw per-source scraped data organised by run folder. These are the unmerged files directly from Google Maps and Practo.</p>
         </div>
         <div class="section">
           <div class="section-header">
@@ -691,6 +856,32 @@
             <div class="empty-state">
               <div class="empty-icon">📂</div>
               <div class="empty-text">No output folders yet.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════ MERGED PANEL ══════════════════ -->
+      <div class="panel" id="panel-merged">
+        <div class="hero" style="margin-bottom:24px; background: linear-gradient(150deg, oklch(0.52 0.18 35) 0%, oklch(0.6 0.18 35) 100%);">
+          <h1>⚡ Merged &amp; Deduped Leads</h1>
+          <p>Combined leads from Google Maps + Practo, deduplicated by name. These files are saved to the <code style="background:rgba(255,255,255,.15);padding:2px 7px;border-radius:6px">merged/</code> folder, separate from raw outputs.</p>
+        </div>
+        <div class="stats" style="margin-bottom:24px">
+          <div class="stat-card"><h2 id="mg-folders">0</h2><p>Merged Folders</p></div>
+          <div class="stat-card"><h2 id="mg-leads">0</h2><p>Unique Leads</p></div>
+          <div class="stat-card"><h2 id="mg-files">0</h2><p>Merged Files</p></div>
+          <div class="stat-card"><h2 id="mg-runs">0</h2><p>Runs With Merge</p></div>
+        </div>
+        <div class="section">
+          <div class="section-header">
+            <h2>Merged Folders</h2>
+            <a class="view-all" onclick="loadMerged()">↻ Refresh</a>
+          </div>
+          <div id="merged-body">
+            <div class="empty-state">
+              <div class="empty-icon">⚡</div>
+              <div class="empty-text">No merged files yet.<br>Run a scrape with <strong>Both</strong> source selected to generate merged leads.</div>
             </div>
           </div>
         </div>
@@ -731,6 +922,26 @@
   </div>
 </div>
 
+<!-- ── MOBILE BOTTOM NAV ── -->
+<div class="mobile-nav" id="mobile-nav">
+  <a onclick="switchTab('scrape',this)" class="active">
+    <span class="mn-icon">⚡</span>
+    Scrape
+  </a>
+  <a onclick="switchTab('files',this)">
+    <span class="mn-icon">📁</span>
+    Raw Files
+  </a>
+  <a onclick="switchTab('merged',this)">
+    <span class="mn-icon">🔗</span>
+    Merged
+  </a>
+  <a onclick="switchTab('jobs',this)">
+    <span class="mn-icon">🕐</span>
+    Jobs
+  </a>
+</div>
+
 <script>
   // ── State ──────────────────────────────────────────────────
   let currentMode   = 'single';
@@ -764,7 +975,8 @@
     populateSelects();
     updatePreview();
     loadFiles();
-    loadJobs(); // FIX 6 — populate sc-jobs on startup
+    loadMerged(); // populate merged panel + stats on startup
+    loadJobs();
   }
 
   function populateSelects() {
@@ -880,20 +1092,20 @@
       try {
         const res = await fetch(`/api/job/${activeJobId}`);
         const job = await res.json();
-        if (job.status !== 'running') { clearInterval(pollTimer); loadFiles(); }
+        if (job.status !== 'running') { clearInterval(pollTimer); loadFiles(); loadMerged(); }
         loadJobs();
       } catch { clearInterval(pollTimer); }
     }, 3000);
   }
 
-  // ── Files ─────────────────────────────────────────────────
+  // ── Raw Files ──────────────────────────────────────────────
   async function loadFiles() {
     try {
       const res     = await fetch('/api/files');
       const folders = await res.json();
 
       const totalRecords = folders.reduce((s,f) => s+(f.total_records||0), 0);
-      const totalFiles   = folders.reduce((s,f) => s+f.file_count, 0);
+      const totalFiles   = folders.reduce((s,f) => s+(f.files||[]).length, 0);
 
       document.getElementById('stat-folders').textContent = folders.length;
       document.getElementById('stat-records').textContent = totalRecords;
@@ -901,47 +1113,109 @@
       document.getElementById('sc-leads').textContent     = totalRecords;
       document.getElementById('sc-files').textContent     = totalFiles;
 
-      const html = renderFolders(folders);
-      document.getElementById('scrape-files-body').innerHTML = html;
-      document.getElementById('files-body').innerHTML         = html;
+      const rawHtml = renderRawFolders(folders);
+      document.getElementById('scrape-files-body').innerHTML = rawHtml;
+      document.getElementById('files-body').innerHTML         = rawHtml;
 
       document.querySelectorAll('.run-folder').forEach(el => {
+        el.querySelector('.folder-header').addEventListener('click', () => el.classList.toggle('open'));
+      });
+
+      // Also refresh merged stats silently
+      refreshMergedStats(folders);
+    } catch {}
+  }
+
+  // ── Merged Files ───────────────────────────────────────────
+  async function loadMerged() {
+    try {
+      const res     = await fetch('/api/merged');
+      const folders = await res.json();
+
+      const totalLeads   = folders.reduce((s,f) => s+(f.total_records||0), 0);
+      const totalFiles   = folders.reduce((s,f) => s+(f.files||[]).length, 0);
+      const runsWithData = folders.filter(f => (f.files||[]).length > 0).length;
+
+      document.getElementById('mg-folders').textContent = folders.length;
+      document.getElementById('mg-leads').textContent   = totalLeads;
+      document.getElementById('mg-files').textContent   = totalFiles;
+      document.getElementById('mg-runs').textContent    = runsWithData;
+
+      document.getElementById('merged-body').innerHTML = renderMergedFolders(folders);
+
+      document.querySelectorAll('#merged-body .run-folder').forEach(el => {
         el.querySelector('.folder-header').addEventListener('click', () => el.classList.toggle('open'));
       });
     } catch {}
   }
 
-  function renderFolders(folders) {
-    if (!folders.length) return `
+  function refreshMergedStats(folders) {
+    // No-op — loadMerged() handles stats independently via /api/merged
+  }
+
+  // ── Raw folder renderer ────────────────────────────────────
+  function renderRawFolders(folders) {
+    const nonempty = folders.filter(f => (f.files||[]).length > 0);
+    if (!nonempty.length) return `
       <div class="empty-state">
         <div class="empty-icon">📂</div>
         <div class="empty-text">No output folders yet.<br>Run a scrape to see data here.</div>
       </div>`;
-    return folders.map(folder => `
+    return nonempty.map(folder => {
+      const files = folder.files || [];
+      return `
       <div class="run-folder open">
         <div class="folder-header">
           <span class="folder-icon">📁</span>
           <span class="folder-name">${folder.folder}</span>
           <div class="folder-meta">
             ${folder.total_records ? `<span class="folder-badge">${folder.total_records} leads</span>` : ''}
-            <span class="folder-count">${folder.file_count} files</span>
+            <span class="folder-count">${files.length} files</span>
           </div>
           <span class="folder-chevron">▶</span>
         </div>
         <div class="folder-files">
-          ${folder.files.length
-            ? folder.files.map(f => renderFileRow(f)).join('')
-            : '<div style="padding:12px;color:#94a3b8;font-size:12px;font-weight:600">No files yet</div>'}
+          ${files.map(f => renderFileRow(f, false)).join('')}
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
 
-  function renderFileRow(f) {
+  // ── Merged folder renderer ─────────────────────────────────
+  function renderMergedFolders(folders) {
+    const nonempty = folders.filter(f => (f.files||[]).length > 0);
+    if (!nonempty.length) return `
+      <div class="empty-state">
+        <div class="empty-icon">⚡</div>
+        <div class="empty-text">No merged files yet.<br>Run a scrape with <strong>Both</strong> source selected.</div>
+      </div>`;
+    return nonempty.map(folder => {
+      const files = folder.files || [];
+      return `
+      <div class="run-folder open">
+        <div class="folder-header">
+          <span class="folder-icon">⚡</span>
+          <span class="folder-name">${folder.folder}</span>
+          <div class="folder-meta">
+            ${folder.total_records ? `<span class="folder-badge" style="background:#fff7ed;color:var(--orange);border-color:#fed7aa">${folder.total_records} unique leads</span>` : ''}
+            <span class="folder-count">${files.length} files</span>
+          </div>
+          <span class="folder-chevron">▶</span>
+        </div>
+        <div class="folder-files" style="background:#fff7ed">
+          ${files.map(f => renderFileRow(f, true)).join('')}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderFileRow(f, isMerged) {
     const icon     = f.type==='json' ? '{ }' : '≡';
     const recLabel = f.type==='json' && f.records ? `${f.records} records` : '';
     const safePath = encodeURIComponent(f.path);
+    const rowCls   = isMerged ? 'file-row merged' : 'file-row';
     return `
-      <div class="file-row">
+      <div class="${rowCls}">
         <span class="file-icon">${icon}</span>
         <span class="file-name">${f.name}</span>
         <span class="file-records">${recLabel}</span>
@@ -1067,25 +1341,30 @@
     window.open(`/api/download?path=${encodedPath}`, '_blank');
   }
 
-  // ── FIX 5: Unified switchTab — works from both sidebar AND topbar ──
+  // ── Unified switchTab — sidebar + topbar + mobile nav ──────
   function switchTab(name, clickedEl) {
-    // Panels
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.getElementById(`panel-${name}`).classList.add('active');
 
-    // Sidebar links — always sync both
     const sidebarLinks = document.querySelectorAll('.nav-links a');
     const tabBtns      = document.querySelectorAll('.tab-btn');
-    const idx          = { scrape:0, files:1, jobs:2 }[name];
+    const mobileLinks  = document.querySelectorAll('.mobile-nav a');
+    const idx          = { scrape:0, files:1, merged:2, jobs:3 }[name];
 
     sidebarLinks.forEach(a => a.classList.remove('active'));
     tabBtns.forEach(b => b.classList.remove('active'));
+    mobileLinks.forEach(a => a.classList.remove('active'));
 
     sidebarLinks[idx]?.classList.add('active');
     tabBtns[idx]?.classList.add('active');
+    mobileLinks[idx]?.classList.add('active');
 
-    if (name==='files') loadFiles();
-    if (name==='jobs')  loadJobs();
+    // Scroll to top on mobile when switching tabs
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    if (name==='files')  loadFiles();
+    if (name==='merged') loadMerged();
+    if (name==='jobs')   loadJobs();
   }
 
   function escHtml(s) {

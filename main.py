@@ -8,13 +8,17 @@ Supported scraping sources:
   • justdial     — JustDial scraper  (⚠️ work in progress — do not use via dashboard)
   • all          — All three sources  (⚠️ includes justdial — CLI only)
 
-Each run creates a timestamped folder inside outputs/:
+Folder layout:
 
-  outputs/
+  outputs/                         ← raw per-source files
   ├── 2026-05-12_11-33-10/
   │   ├── gmaps_dentist_Pune_Baner.json / .csv
-  │   ├── practo_dentist_Pune_Baner.json / .csv
-  │   └── merged_dentist_Pune_Baner.json / .csv   ← deduped (source=both)
+  │   └── practo_dentist_Pune_Baner.json / .csv
+  └── ...
+
+  merged/                          ← deduped combined files (separate from outputs)
+  ├── 2026-05-12_11-33-10/
+  │   └── dentist_Pune_Baner.json / .csv
   └── ...
 
 Usage:
@@ -49,17 +53,32 @@ from config.areas        import AREAS
 
 PROGRESS_FILE = "outputs/.progress.json"
 
+# All possible fields across every scraper — order defines CSV column order.
+# Google Maps fields : source, name, specialty, city, area, stars, reviews,
+#                      address, phone, phone_source, website, latitude,
+#                      longitude, distance_km, maps_url
+# Practo-only fields : specialization, experience, consultation_fee, practo_url
+ALL_FIELDS = [
+    "source", "name", "specialty", "specialization", "experience",
+    "city", "area", "stars", "reviews", "address",
+    "consultation_fee", "phone", "phone_source", "website",
+    "latitude", "longitude", "distance_km",
+    "practo_url", "maps_url",
+]
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
 def make_run_folder() -> str:
-    ts     = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    folder = os.path.join("outputs", ts)
-    os.makedirs(folder, exist_ok=True)
-    print(f"📁 Run folder: {folder}")
-    return folder
+    ts          = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    out_folder  = os.path.join("outputs", ts)
+    mrg_folder  = os.path.join("merged",  ts)
+    os.makedirs(out_folder, exist_ok=True)
+    os.makedirs(mrg_folder, exist_ok=True)
+    print(f"📁 Run folder: {out_folder}")
+    return ts          # return just the timestamp — callers build both paths
 
 
 def load_progress() -> set:
@@ -99,28 +118,65 @@ def dedupe_leads(leads: list[dict]) -> list[dict]:
     return list(seen.values())
 
 
-def save_merged(leads: list[dict], path_csv: str):
+def _merged_fieldnames(leads: list[dict]) -> list[str]:
+    """
+    Build column list: start with preferred order (ALL_FIELDS),
+    then append any unexpected extra keys from the data so we never crash.
+    """
+    seen       = set(ALL_FIELDS)
+    all_fields = list(ALL_FIELDS)
+    for lead in leads:
+        for k in lead.keys():
+            if k not in seen:
+                all_fields.append(k)
+                seen.add(k)
+    return all_fields
+
+
+def save_merged(leads: list[dict], merged_folder: str, slug: str):
+    """
+    Save deduped leads to merged/<timestamp>/<slug>.json and .csv.
+
+    Key fixes vs the old version:
+      • fieldnames covers ALL_FIELDS (both gmaps + practo columns)
+      • restval="N/A"      — missing keys filled with N/A (not blank)
+      • extrasaction="ignore" — future extra keys never crash the writer
+      • Writes to merged/ folder, not outputs/
+    """
     if not leads:
         return
-    path_json = path_csv.replace(".csv", ".json")
-    with open(path_json, "w", encoding="utf-8") as f:
+
+    os.makedirs(merged_folder, exist_ok=True)
+
+    json_path = os.path.join(merged_folder, f"{slug}.json")
+    csv_path  = os.path.join(merged_folder, f"{slug}.csv")
+
+    with open(json_path, "w", encoding="utf-8") as f:
         json.dump(leads, f, ensure_ascii=False, indent=2)
-    with open(path_csv, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=leads[0].keys())
+
+    fieldnames = _merged_fieldnames(leads)
+    with open(csv_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=fieldnames,
+            extrasaction="ignore",   # never crash on unknown keys
+            restval="N/A",           # fill missing keys with N/A
+        )
         writer.writeheader()
         writer.writerows(leads)
-    print(f"  [MERGE] Saved {len(leads)} deduped leads → {path_csv}")
+
+    print(f"  [MERGE] {len(leads)} deduped leads → {csv_path}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# FIX 4: Source resolver
+# Source resolver
 #   "both" → google_maps + practo   (justdial excluded — scraper not ready)
 #   "all"  → all three              (CLI only, not exposed via dashboard)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _resolve_sources(source: str) -> list[str]:
     if source == "both":
-        return ["google_maps", "practo"]     # ← justdial intentionally excluded
+        return ["google_maps", "practo"]
     if source == "all":
         return ["google_maps", "practo", "justdial"]
     return [source]
@@ -142,13 +198,16 @@ async def _run_source(source: str, common: dict) -> list[dict]:
 # Single run
 # ─────────────────────────────────────────────────────────────────────────────
 
-async def run_single(args, run_folder: str):
+async def run_single(args, ts: str):
+    out_folder = os.path.join("outputs", ts)
+    mrg_folder = os.path.join("merged",  ts)
+
     common = dict(
         specialty     = args.specialty,
         city          = args.city,
         area          = args.area,
         max_listings  = args.max,
-        output_dir    = run_folder,
+        output_dir    = out_folder,
         user_data_dir = args.user_data_dir,
     )
 
@@ -160,9 +219,9 @@ async def run_single(args, run_folder: str):
         all_leads.extend(leads)
 
     if len(sources) > 1 and all_leads:
-        slug   = f"merged_{args.specialty}_{args.city}_{args.area}".replace(" ", "_").strip("_")
+        slug   = f"{args.specialty}_{args.city}_{args.area}".replace(" ", "_").strip("_")
         merged = dedupe_leads(all_leads)
-        save_merged(merged, f"{run_folder}/{slug}.csv")
+        save_merged(merged, mrg_folder, slug)
         print(f"\n[MERGE] {len(merged)} unique leads from {len(sources)} sources")
 
 
@@ -170,7 +229,10 @@ async def run_single(args, run_folder: str):
 # Combination runs
 # ─────────────────────────────────────────────────────────────────────────────
 
-async def run_combinations(combos: list, args, done: set, run_folder: str):
+async def run_combinations(combos: list, args, done: set, ts: str):
+    out_folder = os.path.join("outputs", ts)
+    mrg_folder = os.path.join("merged",  ts)
+
     total     = len(combos)
     completed = 0
     skipped   = 0
@@ -198,7 +260,7 @@ async def run_combinations(combos: list, args, done: set, run_folder: str):
                 city          = city,
                 area          = area,
                 max_listings  = args.max,
-                output_dir    = run_folder,
+                output_dir    = out_folder,
                 user_data_dir = args.user_data_dir,
             )
             try:
@@ -211,9 +273,9 @@ async def run_combinations(combos: list, args, done: set, run_folder: str):
                 print(f"  ERROR ({source}): {e} — continuing")
 
         if len(sources) > 1 and all_leads:
-            slug   = f"merged_{specialty}_{city}_{area}".replace(" ", "_").strip("_")
+            slug   = f"{specialty}_{city}_{area}".replace(" ", "_").strip("_")
             merged = dedupe_leads(all_leads)
-            save_merged(merged, f"{run_folder}/{slug}.csv")
+            save_merged(merged, mrg_folder, slug)
 
         if i < total:
             print(f"  Waiting {args.pause}s...")
@@ -221,7 +283,8 @@ async def run_combinations(combos: list, args, done: set, run_folder: str):
 
     print(f"\n{'─' * 55}")
     print(f"  Done! Completed: {completed} | Skipped: {skipped}")
-    print(f"  Files in: {run_folder}")
+    print(f"  Raw files : {out_folder}")
+    print(f"  Merged    : {mrg_folder}")
     print(f"{'─' * 55}\n")
 
 
@@ -232,7 +295,6 @@ async def run_combinations(combos: list, args, done: set, run_folder: str):
 def parse_args():
     parser = argparse.ArgumentParser(description="Doctor Lead Generation Tool")
 
-    # FIX 4: "both" added as a first-class choice (gmaps + practo, no justdial)
     parser.add_argument("--source", default="google_maps",
                         choices=["google_maps", "practo", "both", "justdial", "all"],
                         help=(
@@ -263,21 +325,21 @@ def parse_args():
 
 
 if __name__ == "__main__":
-    args       = parse_args()
-    run_folder = make_run_folder()
-    done       = load_progress() if args.resume else set()
+    args = parse_args()
+    ts   = make_run_folder()      # returns timestamp string, creates both folders
+    done = load_progress() if args.resume else set()
 
     if args.full_run:
         combos = list(product(SPECIALISTS, CITIES, AREAS))
-        asyncio.run(run_combinations(combos, args, done, run_folder))
+        asyncio.run(run_combinations(combos, args, done, ts))
 
     elif args.all_specialists and args.all_areas:
         combos = list(product(SPECIALISTS, [args.city], AREAS))
-        asyncio.run(run_combinations(combos, args, done, run_folder))
+        asyncio.run(run_combinations(combos, args, done, ts))
 
     elif args.all_specialists:
         combos = list(product(SPECIALISTS, [args.city], [args.area]))
-        asyncio.run(run_combinations(combos, args, done, run_folder))
+        asyncio.run(run_combinations(combos, args, done, ts))
 
     else:
-        asyncio.run(run_single(args, run_folder))
+        asyncio.run(run_single(args, ts))
