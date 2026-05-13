@@ -28,11 +28,10 @@ if sys.platform == "win32":
     os.environ["PYTHONIOENCODING"] = "utf-8"
 
 # ── Paths ─────────────────────────────────────────────────────
-BASE_DIR     = Path(__file__).parent
-OUTPUTS_DIR  = BASE_DIR / "outputs"
-DASHBOARD    = BASE_DIR / "dashboard.html"
+BASE_DIR    = Path(__file__).parent
+OUTPUTS_DIR = BASE_DIR / "outputs"
+DASHBOARD   = BASE_DIR / "dashboard.html"
 
-# Config imports (same lists your main.py uses)
 sys.path.insert(0, str(BASE_DIR))
 try:
     from config.specialists import SPECIALISTS
@@ -47,7 +46,6 @@ except ImportError:
               "Aundh", "Shivajinagar", "Katraj", "Hinjewadi", "Koregaon Park", "Chikhali", ""]
 
 # ── In-memory job store ───────────────────────────────────────
-# { job_id: { status, command, started_at, log: [lines] } }
 JOBS: dict[str, dict] = {}
 JOBS_LOCK = threading.Lock()
 
@@ -67,6 +65,8 @@ def index():
 
 # ─────────────────────────────────────────────────────────────
 # Config
+# FIX 3: /api/config only exposes google_maps + practo sources.
+#         JustDial is excluded until that scraper is ready.
 # ─────────────────────────────────────────────────────────────
 
 @app.route("/api/config")
@@ -74,12 +74,17 @@ def api_config():
     return jsonify({
         "specialists": SPECIALISTS,
         "cities":      CITIES,
-        "areas":       [a for a in AREAS if a],   # drop the blank entry
+        "areas":       [a for a in AREAS if a],   # drop blank entry
+        "sources":     ["google_maps", "practo"],  # justdial excluded intentionally
     })
 
 
 # ─────────────────────────────────────────────────────────────
 # Start a scrape job
+# FIX 2: server now reads `source` from the request body and
+#         passes the correct --source flag to main.py.
+# FIX 4: "both" maps to "--source both" which main.py handles
+#         as google_maps + practo only (justdial excluded).
 # ─────────────────────────────────────────────────────────────
 
 @app.route("/api/scrape", methods=["POST"])
@@ -87,14 +92,23 @@ def api_scrape():
     body = request.get_json(force=True)
 
     mode         = body.get("mode", "single")
+    source       = body.get("source", "google_maps")   # FIX 2
     specialty    = body.get("specialty", "dentist")
     city         = body.get("city", "Pune")
     area         = body.get("area", "")
     max_listings = int(body.get("max_listings", 20))
     pause        = int(body.get("pause", 5))
 
-    # Build the same CLI command shown in the dashboard preview
-    cmd = [sys.executable, str(BASE_DIR / "main.py")]
+    # Safety: only allow known sources — never let an unknown value reach main.py
+    allowed_sources = {"google_maps", "practo", "both"}
+    if source not in allowed_sources:
+        source = "google_maps"
+
+    # FIX 2: map dashboard "both" → main.py "--source both"
+    # main.py._resolve_sources("both") returns ["google_maps", "practo"]
+    source_flag = source  # "google_maps" | "practo" | "both"
+
+    cmd = [sys.executable, str(BASE_DIR / "main.py"), "--source", source_flag]
 
     if mode == "full_run":
         cmd += ["--full-run"]
@@ -104,7 +118,7 @@ def api_scrape():
         cmd += ["--all-specialists", "--city", city]
         if area:
             cmd += ["--area", area]
-    else:
+    else:  # single
         cmd += ["--specialty", specialty, "--city", city]
         if area:
             cmd += ["--area", area]
@@ -123,7 +137,6 @@ def api_scrape():
     with JOBS_LOCK:
         JOBS[job_id] = job
 
-    # Run in background thread, stream stdout line-by-line into job log
     t = threading.Thread(target=_run_job, args=(job_id, cmd), daemon=True)
     t.start()
 
@@ -131,7 +144,6 @@ def api_scrape():
 
 
 def _run_job(job_id: str, cmd: list[str]):
-    """Spawns main.py as a subprocess and captures its output line by line."""
     try:
         env = os.environ.copy()
         env["PYTHONIOENCODING"] = "utf-8"
@@ -171,9 +183,7 @@ def _run_job(job_id: str, cmd: list[str]):
 @app.route("/api/jobs")
 def api_jobs():
     with JOBS_LOCK:
-        # Most recent first
         jobs = sorted(JOBS.values(), key=lambda j: j["started_at"], reverse=True)
-        # Don't send the full log in the list view — just status info
         return jsonify([
             {k: v for k, v in j.items() if k != "log"}
             for j in jobs
@@ -202,19 +212,19 @@ def api_files():
         if not entry.is_dir() or entry.name.startswith("."):
             continue
 
-        files = []
+        files         = []
         total_records = 0
 
         for f in sorted(entry.iterdir()):
             if f.suffix not in (".json", ".csv"):
                 continue
 
-            size = f.stat().st_size
+            size    = f.stat().st_size
             records = None
 
             if f.suffix == ".json":
                 try:
-                    data = json.loads(f.read_text(encoding="utf-8"))
+                    data    = json.loads(f.read_text(encoding="utf-8"))
                     records = len(data) if isinstance(data, list) else None
                     total_records += records or 0
                 except Exception:
@@ -240,37 +250,33 @@ def api_files():
 
 
 # ─────────────────────────────────────────────────────────────
-# Preview a JSON file (first 20 records)
+# Preview (first 20 records)
 # ─────────────────────────────────────────────────────────────
 
 @app.route("/api/preview")
 def api_preview():
     path = request.args.get("path", "")
-    p = Path(path)
+    p    = Path(path)
 
     if not p.exists() or p.suffix != ".json":
         abort(404)
-    # Safety: must be inside outputs/
     if not str(p.resolve()).startswith(str(OUTPUTS_DIR.resolve())):
         abort(403)
 
-    data = json.loads(p.read_text(encoding="utf-8"))
+    data    = json.loads(p.read_text(encoding="utf-8"))
     records = data if isinstance(data, list) else []
 
-    return jsonify({
-        "total":   len(records),
-        "records": records[:20],
-    })
+    return jsonify({"total": len(records), "records": records[:20]})
 
 
 # ─────────────────────────────────────────────────────────────
-# Download a file
+# Download
 # ─────────────────────────────────────────────────────────────
 
 @app.route("/api/download")
 def api_download():
     path = request.args.get("path", "")
-    p = Path(path)
+    p    = Path(path)
 
     if not p.exists():
         abort(404)
