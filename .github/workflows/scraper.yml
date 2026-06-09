@@ -2,7 +2,7 @@ name: Google Maps Scraper
 
 on:
   schedule:
-    - cron: "0 18 * * *"
+    - cron: "50 17 * * *"
   workflow_dispatch:
 
 jobs:
@@ -29,7 +29,7 @@ jobs:
         run: playwright install chromium
 
       - name: Run scraper
-        run: python scraper.py
+        run: python main.py --source google_maps --specialty "dentist" --city "Pune" --max 20 --pause 5
         env:
           PLAYWRIGHT_BROWSERS_PATH: 0
 
