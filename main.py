@@ -210,6 +210,7 @@ async def run_single(args, ts: str):
         output_dir    = out_folder,
         user_data_dir = args.user_data_dir,
         channel       = args.channel,
+        headless      = args.headless,
     )
 
     sources    = _resolve_sources(args.source)
@@ -264,6 +265,7 @@ async def run_combinations(combos: list, args, done: set, ts: str):
                 output_dir    = out_folder,
                 user_data_dir = args.user_data_dir,
                 channel       = args.channel,
+                headless      = args.headless,
             )
             try:
                 leads = await _run_source(source, common)
@@ -315,6 +317,8 @@ def parse_args():
     parser.add_argument("--user-data-dir",   default="C:/playwright-profile")
     parser.add_argument("--channel",         default=None,
                         help="Browser channel (e.g. 'chrome' for system Google Chrome)")
+    parser.add_argument("--headless",        action="store_true", default=False,
+                        help="Run browser in headless mode (no GUI)")
     parser.add_argument("--pause",           default=5, type=int,
                         help="Seconds between queries")
 

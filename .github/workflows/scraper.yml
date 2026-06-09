@@ -1,5 +1,8 @@
 name: Google Maps Scraper
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   schedule:
     - cron: "50 17 * * *"
@@ -26,7 +29,7 @@ jobs:
           playwright install-deps chromium   # works cleanly on 22.04
 
       - name: Run scraper
-        run: python main.py --source google_maps --specialty "dentist" --city "Pune" --max 20 --pause 5 --channel chrome
+        run: python main.py --source google_maps --specialty "dentist" --city "Pune" --max 20 --pause 5 --channel chrome --headless
 
       - name: Upload output
         uses: actions/upload-artifact@v4
