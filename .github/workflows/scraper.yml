@@ -7,7 +7,7 @@ on:
 
 jobs:
   scrape:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04        # ← fixed: avoids libasound2 issue on 24.04
 
     steps:
       - uses: actions/checkout@v4
@@ -20,13 +20,10 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
-      - name: Install Google Chrome
+      - name: Install Playwright browsers + deps
         run: |
-          sudo apt-get update
-          sudo apt-get install -y google-chrome-stable
-
-      - name: Install Playwright system deps
-        run: playwright install-deps chromium
+          playwright install chromium
+          playwright install-deps chromium   # works cleanly on 22.04
 
       - name: Run scraper
         run: python main.py --source google_maps --specialty "dentist" --city "Pune" --max 20 --pause 5 --channel chrome
