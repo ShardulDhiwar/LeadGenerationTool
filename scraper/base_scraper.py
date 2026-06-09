@@ -22,7 +22,13 @@ class BaseScraper(ABC):
             user_data_dir=user_data_dir,
             headless=self.headless,
             slow_mo=self.slow_mo,
-            args=["--start-maximized"],
+            args=[
+                "--start-maximized",
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--window-size=1920,1080",
+            ],
         )
         self.page = await self.browser.new_page()
         print("✅ Browser started")

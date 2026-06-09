@@ -275,9 +275,10 @@ async def scrape_google_maps(
     output_dir: str = "outputs",
     user_data_dir: str = "C:/playwright-profile",
     zoom: int | None = None,
+    headless: bool = False,
 ) -> list[dict]:
     scraper = GoogleMapsScraper(
-        headless=False, slow_mo=80, scroll_rounds=6,
+        headless=headless, slow_mo=80, scroll_rounds=6,
         max_listings=max_listings, zoom=zoom,
     )
     await scraper.start(user_data_dir=user_data_dir)
