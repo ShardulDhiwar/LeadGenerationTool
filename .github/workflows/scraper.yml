@@ -26,15 +26,15 @@ jobs:
           sudo apt-get install -y google-chrome-stable
 
       - name: Install Playwright Chromium
-        run: playwright install chromium
+        run: |
+          playwright install chromium
+          playwright install-deps chromium
 
       - name: Run scraper
         run: python main.py --source google_maps --specialty "dentist" --city "Pune" --max 20 --pause 5
-        env:
-          PLAYWRIGHT_BROWSERS_PATH: 0
 
       - name: Upload output
         uses: actions/upload-artifact@v4
         with:
           name: scraped-data
-          path: output/
+          path: outputs/
