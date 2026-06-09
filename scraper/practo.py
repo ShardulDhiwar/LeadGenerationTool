@@ -104,8 +104,9 @@ class PractoScraper(BaseScraper):
         slow_mo: int = 80,
         max_pages: int = 3,
         max_listings: int = 20,
+        channel: str | None = None,
     ) -> None:
-        super().__init__(headless=headless, slow_mo=slow_mo)
+        super().__init__(headless=headless, slow_mo=slow_mo, channel=channel)
         self.max_pages    = max_pages
         self.max_listings = max_listings
         self._captured_responses: list[dict] = []
@@ -458,12 +459,14 @@ async def scrape_practo(
     max_pages: int = 3,
     output_dir: str = "outputs",
     user_data_dir: str = "C:/playwright-profile",
+    channel: str | None = None,
 ):
     scraper = PractoScraper(
         headless=False,
         slow_mo=80,
         max_pages=max_pages,
         max_listings=max_listings,
+        channel=channel,
     )
     await scraper.start(user_data_dir=user_data_dir)
     try:

@@ -25,13 +25,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
 
-      - name: Install Playwright Chromium
-        run: |
-          playwright install chromium
-          playwright install-deps chromium
+      - name: Install Playwright system deps
+        run: playwright install-deps chromium
 
       - name: Run scraper
-        run: python main.py --source google_maps --specialty "dentist" --city "Pune" --max 20 --pause 5
+        run: python main.py --source google_maps --specialty "dentist" --city "Pune" --max 20 --pause 5 --channel chrome
 
       - name: Upload output
         uses: actions/upload-artifact@v4

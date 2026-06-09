@@ -209,6 +209,7 @@ async def run_single(args, ts: str):
         max_listings  = args.max,
         output_dir    = out_folder,
         user_data_dir = args.user_data_dir,
+        channel       = args.channel,
     )
 
     sources    = _resolve_sources(args.source)
@@ -262,6 +263,7 @@ async def run_combinations(combos: list, args, done: set, ts: str):
                 max_listings  = args.max,
                 output_dir    = out_folder,
                 user_data_dir = args.user_data_dir,
+                channel       = args.channel,
             )
             try:
                 leads = await _run_source(source, common)
@@ -311,6 +313,8 @@ def parse_args():
     parser.add_argument("--max",             default=20, type=int,
                         help="Max listings per source per query")
     parser.add_argument("--user-data-dir",   default="C:/playwright-profile")
+    parser.add_argument("--channel",         default=None,
+                        help="Browser channel (e.g. 'chrome' for system Google Chrome)")
     parser.add_argument("--pause",           default=5, type=int,
                         help="Seconds between queries")
 

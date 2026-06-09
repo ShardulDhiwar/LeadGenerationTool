@@ -9,16 +9,17 @@ class BaseScraper(ABC):
     Handles browser lifecycle, retries, and shared utilities.
     """
 
-    def __init__(self, headless: bool = False, slow_mo: int = 80):
+    def __init__(self, headless: bool = False, slow_mo: int = 80, channel: str | None = None):
         self.headless = headless
         self.slow_mo = slow_mo
+        self.channel = channel
         self.browser: BrowserContext | None = None
         self.page: Page | None = None
 
     async def start(self, user_data_dir: str = "C:/playwright-profile"):
         """Launch persistent browser context (keeps your Google login)."""
         self._playwright = await async_playwright().start()
-        self.browser = await self._playwright.chromium.launch_persistent_context(
+        launch_options = dict(
             user_data_dir=user_data_dir,
             headless=self.headless,
             slow_mo=self.slow_mo,
@@ -30,6 +31,9 @@ class BaseScraper(ABC):
                 "--window-size=1920,1080",
             ],
         )
+        if self.channel:
+            launch_options["channel"] = self.channel
+        self.browser = await self._playwright.chromium.launch_persistent_context(**launch_options)
         self.page = await self.browser.new_page()
         print("✅ Browser started")
 

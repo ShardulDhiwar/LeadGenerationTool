@@ -78,8 +78,9 @@ class GoogleMapsScraper(BaseScraper):
         scroll_rounds: int = 6,
         max_listings: int = 20,
         zoom: int | None = None,
+        channel: str | None = None,
     ) -> None:
-        super().__init__(headless=headless, slow_mo=slow_mo)
+        super().__init__(headless=headless, slow_mo=slow_mo, channel=channel)
         self.scroll_rounds = scroll_rounds
         self.max_listings  = max_listings
         self.zoom          = zoom
@@ -276,10 +277,11 @@ async def scrape_google_maps(
     user_data_dir: str = "C:/playwright-profile",
     zoom: int | None = None,
     headless: bool = False,
+    channel: str | None = None,
 ) -> list[dict]:
     scraper = GoogleMapsScraper(
         headless=headless, slow_mo=80, scroll_rounds=6,
-        max_listings=max_listings, zoom=zoom,
+        max_listings=max_listings, zoom=zoom, channel=channel,
     )
     await scraper.start(user_data_dir=user_data_dir)
     try:
