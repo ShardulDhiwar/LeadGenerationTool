@@ -10,7 +10,7 @@ on:
 
 jobs:
   scrape:
-    runs-on: ubuntu-22.04        # ← fixed: avoids libasound2 issue on 24.04
+    runs-on: ubuntu-22.04
 
     steps:
       - uses: actions/checkout@v4
@@ -26,10 +26,18 @@ jobs:
       - name: Install Playwright browsers + deps
         run: |
           playwright install chromium
-          playwright install-deps chromium   # works cleanly on 22.04
+          playwright install-deps chromium
 
       - name: Run scraper
-        run: python main.py --source google_maps --specialty "dentist" --city "Pune" --max 20 --pause 5 --channel chrome --headless
+        run: |
+          python main.py \
+            --source google_maps \
+            --specialty "dentist" \
+            --city "Pune" \
+            --max 20 \
+            --pause 5 \
+            --headless \
+            --user-data-dir /tmp/playwright-profile
 
       - name: Upload output
         uses: actions/upload-artifact@v4
